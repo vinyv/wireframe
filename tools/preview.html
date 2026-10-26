@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- Dev preview of the panel in a normal browser: fakes CEP, Node and the capture helper.
+     Serve the project folder over http and open tools/preview.html; ?w=300&h=420 sets the size,
+     ?page=settings shows the Settings window instead of the panel. -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Wireframe preview</title>
+  <link rel="stylesheet" href="../extension/css/panel.css">
+  <style>
+    html, body { height: auto; }
+    body.host { background: #1a1a1a; padding: 24px; display: flex; gap: 24px; align-items: flex-start; }
+    .frame { border: 1px solid #000; width: var(--w); height: var(--h); overflow: hidden; }
+    iframe { border: 0; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+<script>
+  // Fake host APIs, installed before the panel scripts run.
+  const COMP = { id: 7, name: 'Product Hero v3', width: 1920, height: 1080, frameRate: 24, frameDuration: 1 / 24,
+    duration: 70.04, workAreaStart: 35.17, workAreaDuration: 10.625, time: 37.9, numLayers: 240 };
+  let zoom = 0.5;
+  const VIEWER = [25, 172, 2541, 888];
+  const compRect = (z) => {
+    const cx = VIEWER[0] + VIEWER[2] / 2, cy = VIEWER[1] + VIEWER[3] / 2, w = COMP.width * z, h = COMP.height * z;
+    const L = Math.max(VIEWER[0], Math.round(cx - w / 2)), T = Math.max(VIEWER[1], Math.round(cy - h / 2));
+    const R = Math.min(VIEWER[0] + VIEWER[2], Math.round(cx + w / 2)), B = Math.min(VIEWER[1] + VIEWER[3], Math.round(cy + h / 2));
+    return [L, T, R - L, B - T];
+  };
+  const params = new URLSearchParams(location.search);
+  const noComp = params.has('nocomp');
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  window.process = { env: { APPDATA: 'C:\\Users\\you\\AppData\\Roaming' } };
+  const pathMod = {
+    join: (...p) => p.join('\\').replace(/\\+/g, '\\'),
+    basename: (p) => p.split(/[\\/]/).pop(),
+  };
+  window.require = (m) => ({
+    fs: {
+      mkdirSync() {}, writeFileSync() {}, appendFileSync() {}, copyFileSync() {}, unlinkSync() {},
+      existsSync: (p) => params.has('pending') && /pending-restore/.test(p),
+      readFileSync() { if (params.has('pending')) return '{"compId":7}'; throw new Error('none'); },
+    },
+    os: { homedir: () => 'C:\\Users\\you' },
+    path: pathMod,
+    child_process: { spawn() {} },
+  })[m];
+  const listeners = {};
+  window.__adobe_cep__ = {
+    getSystemPath: () => 'file:///C:/fake/extension',
+    addEventListener: (type, fn) => (listeners[type] = listeners[type] || []).push(fn),
+    getExtensionId: () => 'com.wireframe.preview',
+    getHostEnvironment: () => JSON.stringify({ appId: 'AEFT', appVersion: '26.5' }),
+    dispatchEvent: (ev) => (listeners[ev.type] || []).forEach((fn) => setTimeout(() => fn(ev), 0)),
+    requestOpenExtension: (id) => window.open('preview.html?page=settings&w=320&h=600', id, 'width=340,height=640'),
+    evalScript(script, cb) {
+      const m = /^WireframeHost\.(\w+)\((.*)\)$/.exec(script);
+      if (!m) return cb('undefined');
+      const fn = m[1], args = JSON.parse('[' + m[2] + ']');
+      const ok = (result) => setTimeout(() => cb(JSON.stringify({ ok: true, result })), 30);
+      if (fn === 'info') return noComp ? cb(JSON.stringify({ ok: false, error: 'no comp' })) : ok(COMP);
+      if (fn === 'prepare') return ok({ snapshot: { compId: 7, selectedLayerIds: [], viewer: {} }, comp: COMP });
+      if (fn === 'calibrationStart') return ok({ markerId: 1, controlsToggled: true });
+      if (fn === 'calibrationEnd') return ok({ removed: true });
+      if (fn === 'setZoom') { zoom = args[1]; return ok({ zoom, maximized: true }); }
+      if (fn === 'setFrame') return ok({ frame: args[1] });
+      if (fn === 'restore') return ok({ problems: [], selection: null });
+      if (fn === 'toggleLayerControls') return ok({ toggled: true });
+      if (fn === 'focusViewer') return ok({ maximized: true });
+      cb('undefined');
+    },
+  };
+  window.cep = { fs: { showOpenDialogEx: () => ({ err: 1 }) } };
+</script>
+<script src="../extension/js/cep.js"></script>
+<script src="../extension/js/store.js"></script>
+<script>
+  // Fake capture helper (replaces js/helper.js).
+  let cancelled = false;
+  window.CaptureHelper = class {
+    async request(cmd, args = {}) {
+      if (cmd === 'ping') return { version: 'preview' };
+      if (cmd === 'resetCancel') { cancelled = false; return {}; }
+      if (cmd === 'cancel') { cancelled = true; return {}; }
+      if (cmd === 'find') return { size: [2576, 1096], dpi: 96 };
+      if (cmd === 'grab') return { hash: 'x' };
+      if (cmd === 'overlay') return {};
+      if (cmd === 'measure') { await wait(120); return { comp: compRect(zoom), imageSize: [2576, 1096], hash: 'm' + zoom, fill: 1, lines: null }; }
+      if (cmd === 'grabStable') { await wait(+params.get('ms') || 60); return { hash: Math.random().toString(36), size: [args.rect[2], args.rect[3]], grabs: 3, ms: 60, cancel: cancelled || undefined }; }
+      return {};
+    }
+    stop() {}
+  };
+  window.defaultHelperPath = () => 'fake.exe';
+</script>
+<script src="../extension/js/calibrate.js"></script>
+<script>
+  // Load the real panel body, then main.js.
+  const page = params.get('page') === 'settings' ? 'settings' : 'index';
+  fetch('../extension/' + page + '.html').then((r) => r.text()).then((html) => {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script').forEach((s) => s.remove());
+    document.body.innerHTML = doc.body.innerHTML;
+    document.body.className = doc.body.className;
+    document.body.style.width = (params.get('w') || 300) + 'px';
+    document.body.style.height = (params.get('h') || 460) + 'px';
+    document.body.style.border = '1px solid #000';
+    const s = document.createElement('script');
+    s.src = '../extension/js/' + (page === 'settings' ? 'settings' : 'main') + '.js';
+    s.onload = () => {
+      if (params.has('render')) setTimeout(() => document.getElementById('eye').click(), 400);
+    };
+    document.body.appendChild(s);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionList>
+  <Extension Id="com.wireframe.panel">
+    <HostList>
+      <Host Name="AEFT" Port="8097" />
+    </HostList>
+  </Extension>
+  <Extension Id="com.wireframe.settings">
+    <HostList>
+      <Host Name="AEFT" Port="8098" />
+    </HostList>
+  </Extension>
+</ExtensionList>

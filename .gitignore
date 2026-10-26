@@ -1,0 +1,12 @@
+# Build output: helper\build.cmd and tools\package.ps1 recreate these.
+/extension/bin/
+/dist/
+
+# Google Drive folder settings
+desktop.ini
+
+# Local Claude Code settings
+/.claude/
+
+# OpenSSL random seed that ZXPSignCmd writes when creating a certificate
+.rnd

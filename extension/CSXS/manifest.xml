@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.wireframe" ExtensionBundleVersion="0.2.0" ExtensionBundleName="Wireframe" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList>
+    <Extension Id="com.wireframe.panel" Version="0.2.0" />
+    <Extension Id="com.wireframe.settings" Version="0.2.0" />
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="AEFT" Version="[25.0,99.9]" />
+    </HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="11.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <Extension Id="com.wireframe.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <ScriptPath>./jsx/host.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Wireframe</Menu>
+          <Geometry>
+            <Size>
+              <Height>110</Height>
+              <Width>300</Width>
+            </Size>
+            <MinSize>
+              <Height>72</Height>
+              <Width>200</Width>
+            </MinSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+    <!-- Settings pop-up, opened from the panel's gear button. No Menu: it isn't listed under Window > Extensions. -->
+    <Extension Id="com.wireframe.settings">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./settings.html</MainPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Modeless</Type>
+          <Geometry>
+            <Size>
+              <Height>520</Height>
+              <Width>640</Width>
+            </Size>
+            <MinSize>
+              <Height>300</Height>
+              <Width>260</Width>
+            </MinSize>
+            <!-- Without this AE caps the window at Size, so it couldn't grow to fit its content. -->
+            <MaxSize>
+              <Height>1400</Height>
+              <Width>1600</Width>
+            </MaxSize>
+          </Geometry>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

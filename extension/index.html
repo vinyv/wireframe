@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html oncontextmenu="return false;">
+<head>
+  <meta charset="utf-8">
+  <title>Wireframe</title>
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body>
+  <!-- One row (render button, what will render, settings) and a status line. Settings open in their own window. -->
+  <main id="view-main">
+    <div class="row">
+      <button id="eye" class="eye" aria-label="Render">
+        <span id="eye-fill" class="eye-fill" aria-hidden="true"></span>
+        <span id="eye-label" class="eye-label">Render</span>
+      </button>
+      <div class="comp">
+        <div id="comp-name" class="comp-name">No composition</div>
+        <div id="comp-meta" class="comp-meta"></div>
+        <div id="plan" class="plan"></div>
+      </div>
+      <button id="open-settings" class="icon-btn" title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/><path d="M7 3.5v4M13 8v4M8 12.5v4"/></svg>
+      </button>
+    </div>
+
+    <div id="restore-banner" class="notice hidden">
+      <span>AE view was left changed.</span>
+      <button id="restore-pending" class="btn ghost sm">Restore</button>
+    </div>
+
+    <footer id="status" class="status" role="status"></footer>
+  </main>
+
+  <script src="js/cep.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/helper.js"></script>
+  <script src="js/calibrate.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html oncontextmenu="return false;">
+<head>
+  <meta charset="utf-8">
+  <title>Wireframe Settings</title>
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body class="settings-window">
+  <section id="view-settings">
+    <div class="settings">
+      <div id="settings-grid" class="settings-grid">
+      <fieldset>
+        <legend>Output</legend>
+        <label class="check"><input id="saveNextToProject" type="checkbox"> Save next to the project, in a Wireframe folder</label>
+        <div class="field" id="folder-field">
+          <span class="label">Folder</span>
+          <div class="folder">
+            <input id="outDir" type="text" spellcheck="false">
+            <button id="browse" class="btn ghost sm">Change</button>
+          </div>
+          <span id="folder-hint" class="hint">Used when the project hasn't been saved yet.</span>
+        </div>
+        <div class="field">
+          <span class="label">Format</span>
+          <div class="seg" data-for="format">
+            <button data-v="png">PNG</button><button data-v="jpg">JPEG</button><button data-v="tif">TIFF</button>
+          </div>
+          <input id="format" type="hidden">
+        </div>
+        <div class="field">
+          <span class="label">Frames</span>
+          <div class="seg" data-for="range">
+            <button data-v="workArea">Work area</button><button data-v="comp">Whole comp</button>
+          </div>
+          <input id="range" type="hidden">
+        </div>
+        <label class="check"><input id="revealFolder" type="checkbox"> Open the folder when done</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Capture</legend>
+        <div class="field">
+          <span class="label">Preview</span>
+          <div class="seg" data-for="fastPreview">
+            <button data-v="off">Standard</button><button data-v="wireframe">Wireframe</button><button data-v="keep">As is</button>
+          </div>
+          <input id="fastPreview" type="hidden">
+        </div>
+        <label class="check"><input id="selectAllLayers" type="checkbox"> Select all layers so their paths show</label>
+        <label class="check"><input id="fullResolution" type="checkbox"> Render at full resolution</label>
+        <label class="check"><input id="disableAutoSave" type="checkbox"> Pause Auto Save while rendering</label>
+        <label class="check"><input id="hideSafeZones" type="checkbox"> Hide Title/Action Safe while rendering</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Size and timing</legend>
+        <div class="grid">
+          <label class="num">Edge padding<span class="unit"><input id="edgePadding" type="number" min="0" max="50" step="1">px</span></label>
+          <label class="num">Max zoom<span class="unit"><input id="maxZoom" type="number" min="10" max="800" step="10">%</span></label>
+          <label class="num">Settle time<span class="unit"><input id="stableMs" type="number" min="100" max="5000" step="50">ms</span></label>
+          <label class="num">Max wait per frame<span class="unit"><input id="maxRenderWait" type="number" min="200" max="20000" step="100">ms</span></label>
+        </div>
+        <p class="hint">Raise settle time if heavy comps save half-drawn frames.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Tools</legend>
+        <div class="tools">
+          <button id="test" class="btn">Test one frame</button>
+          <button id="restore" class="btn ghost" title="Undo the view changes a stopped or crashed render left behind">Restore AE view</button>
+          <button id="reset" class="btn ghost">Reset settings</button>
+        </div>
+        <p id="tool-status" class="tool-status" role="status"></p>
+        <details>
+          <summary>Log</summary>
+          <pre id="log"></pre>
+        </details>
+      </fieldset>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/cep.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/settings.js"></script>
+</body>
+</html>
