@@ -149,6 +149,8 @@
     fitWindow();
 
     Store.on('busy', setBusy);
+    // The panel can change settings too ("Don't remind me again"); show what's saved.
+    Store.on('settingsChanged', () => fill(Store.load()));
     Store.on('status', showStatus);
     setBusy(false);
     Store.emit('settingsOpened'); // the panel answers with its busy state

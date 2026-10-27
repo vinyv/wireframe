@@ -246,7 +246,7 @@
   }
 
   // Prepares AE, auto-fits the comp, runs work(ctx), and always restores AE afterwards.
-  // ctx: { s, comp, fit, win, stamp, outDir }
+  // ctx: { s, comp, fit, win, stamp, outDir, onState }
   async function captureSession(work) {
     if (busy) return;
     setBusy(true);
@@ -267,6 +267,8 @@
       const snapshot = prepared.snapshot;
       const flags = {}; // temporary view changes that need undoing, mirrored to the crash-recovery file
       const outDir = outputDir(s, prepared.comp);
+      // Keeps the crash-recovery file in step with temporary view changes.
+      const onState = (patch) => savePending(Object.assign({}, snapshot, Object.assign(flags, patch)));
       const t0 = Date.now();
       setEye('…', 'Fitting the comp to the viewer');
       const fit = await Calibrate.calibrate({
@@ -274,13 +276,12 @@
         comp: prepared.comp,
         settings: s,
         log,
-        // Keep the crash-recovery file in step with temporary view changes made while calibrating.
-        onState: (patch) => savePending(Object.assign({}, snapshot, Object.assign(flags, patch))),
+        onState,
         toggleSafeZones: () => toggleSafeZones(prepared.comp.id)
       });
       log('Calibrated in ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s');
 
-      await work({ s, comp: prepared.comp, fit, win, stamp, outDir });
+      await work({ s, comp: prepared.comp, fit, win, stamp, outDir, onState });
     } catch (e) {
       status(errorText(e), true);
     } finally {
@@ -310,17 +311,49 @@
     });
   }
 
+  // Showing or hiding layer controls redraws an already-rendered frame, so it lands quickly; if the
+  // picture hasn't changed by then, there were no controls to draw.
+  const CONTROLS_WAIT_MS = 500;
+
   // Steps through the range frame by frame and saves each one cropped to the comp.
+  //
+  // AE draws layer controls for the new time at once, but the frame itself can take much longer to
+  // render. With controls showing, the first change after a time step is just the outlines moving, and
+  // a slow frame would be saved as new outlines over the old picture. So, when the controls' state is
+  // known, each frame renders with them hidden (only the finished frame can change the picture) and
+  // they're shown just for the capture. Toggling them is a menu command, which brings AE to the front
+  // every frame; the cache reminder before a render is there so that's quick.
   function render() {
-    return captureSession(async ({ s, comp, fit, stamp, outDir }) => {
+    return captureSession(async ({ s, comp, fit, stamp, outDir, onState }) => {
       const { first, count } = frameRange(comp, s.range);
       const base = safeName(comp.name);
       const folder = path.join(outDir, base + '_' + stamp);
       fs.mkdirSync(folder, { recursive: true });
       log('Rendering ' + count + ' frames (' + first + '–' + (first + count - 1) + ') to ' + folder);
 
+      const wait = (opts) => helper.request('grabStable', Object.assign({
+        rect: fit.rect,
+        stableMs: s.stableMs,
+        timeoutMs: Math.max(30000, s.maxRenderWait * 4)
+      }, opts));
+      let hidden = false;
+      const setControlsHidden = async (hide) => {
+        if (hide === hidden) return;
+        if (!(await CEP.jsx('toggleLayerControls')).toggled) throw new Error('could not toggle layer controls');
+        hidden = hide;
+        onState({ layerControlsToggled: hide });
+      };
+      const split = fit.controls === 'shown';
+      if (fit.controls === 'unknown') log('Layer controls state unknown, so frames that render slowly may be saved before they finish.');
+
       // Hash of the current picture, so the first frame waits for AE to actually redraw.
-      let prevHash = (await helper.request('grab', { rect: fit.rect })).hash;
+      let prevHash;
+      if (split) {
+        await setControlsHidden(true);
+        prevHash = (await wait({ changeTimeoutMs: CONTROLS_WAIT_MS })).hash;
+      } else {
+        prevHash = (await helper.request('grab', { rect: fit.rect })).hash;
+      }
       const slow = [];
       const loopStart = Date.now();
       let done = 0;
@@ -333,18 +366,26 @@
         if (set.frame !== frame) log('Warning: AE landed on frame ' + set.frame + ' instead of ' + frame);
 
         const out = path.join(folder, base + '_' + String(frame).padStart(5, '0') + '.' + s.format);
-        const r = await helper.request('grabStable', {
-          rect: fit.rect,
-          out,
-          prevHash,
-          stableMs: s.stableMs,
-          changeTimeoutMs: s.maxRenderWait,
-          timeoutMs: Math.max(30000, s.maxRenderWait * 4)
-        });
-        if (r.cancel) break;
-        prevHash = r.hash;
+        let r;
+        if (split) {
+          // Rendered frame first, without controls; then the controls over it, saved; then hide them
+          // again and wait for the clean frame to be back on screen before stepping on.
+          const clean = await wait({ prevHash, changeTimeoutMs: s.maxRenderWait });
+          if (clean.cancel) break;
+          await setControlsHidden(false);
+          r = await wait({ out, prevHash: clean.hash, changeTimeoutMs: CONTROLS_WAIT_MS });
+          await setControlsHidden(true);
+          if (r.cancel) break;
+          await wait({ prevHash: r.hash, untilHash: clean.hash, changeTimeoutMs: CONTROLS_WAIT_MS });
+          prevHash = clean.hash;
+          if (clean.timedOut || r.timedOut) slow.push(frame);
+        } else {
+          r = await wait({ out, prevHash, changeTimeoutMs: s.maxRenderWait });
+          if (r.cancel) break;
+          prevHash = r.hash;
+          if (r.timedOut) slow.push(frame);
+        }
         done++;
-        if (r.timedOut) slow.push(frame);
 
         const elapsed = (Date.now() - loopStart) / 1000;
         const eta = (elapsed / done) * (count - done);
@@ -353,6 +394,8 @@
           .request('overlay', { text: 'Wireframe · frame ' + done + ' / ' + count + ' · ' + formatDuration(eta) + ' left · Esc to cancel' })
           .catch(() => {});
       }
+
+      await setControlsHidden(false);
 
       const secs = (Date.now() - loopStart) / 1000;
       log('Done: ' + done + ' frames in ' + formatDuration(secs) + ' (' + (done ? (secs / done).toFixed(2) : '0') + ' s/frame)');
@@ -373,9 +416,32 @@
     } catch (e) {}
   }
 
-  function onEye() {
-    if (busy) cancel();
-    else render();
+  // Uncached frames make every render step slow (and AE comes to the front each frame), so a render
+  // first asks, in a dialog in AE, to RAM-preview the range, unless that's turned off in Settings.
+  let asking = false;
+  async function onEye() {
+    if (busy) return cancel();
+    if (asking) return;
+    if (Store.load().cacheReminder) {
+      asking = true;
+      let answer;
+      try {
+        answer = await CEP.jsx('cacheReminder');
+      } catch (e) {
+        log('Cache reminder failed: ' + errorText(e));
+        answer = { render: true };
+      } finally {
+        asking = false;
+      }
+      if (answer.stopReminding) {
+        const s = Store.load();
+        s.cacheReminder = false;
+        Store.save(s);
+        Store.emit('settingsChanged');
+      }
+      if (!answer.render) return;
+    }
+    render();
   }
 
   async function manualRestore() {

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="7.0" ExtensionBundleId="com.wireframe" ExtensionBundleVersion="0.2.0" ExtensionBundleName="Wireframe" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.wireframe" ExtensionBundleVersion="0.2.4" ExtensionBundleName="Wireframe" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.wireframe.panel" Version="0.2.0" />
-    <Extension Id="com.wireframe.settings" Version="0.2.0" />
+    <Extension Id="com.wireframe.panel" Version="0.2.4" />
+    <Extension Id="com.wireframe.settings" Version="0.2.4" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

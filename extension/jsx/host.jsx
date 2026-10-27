@@ -345,8 +345,29 @@ var WireframeHost = (function () {
         return { time: comp.time, frame: frameAt(comp, comp.time) };
     }
 
+    // Modal reminder shown before a render. Returns { render, stopReminding }.
+    function cacheReminder() {
+        var w = new Window('dialog', 'Wireframe');
+        w.orientation = 'column';
+        w.alignChildren = ['fill', 'top'];
+        w.margins = 16;
+        var msg = w.add('statictext', undefined,
+            'Cache the frames before rendering: RAM preview the range until its green bar is full.\n\n' +
+            'Uncached frames take longer, and AE comes to the front for every frame while it renders.',
+            { multiline: true });
+        msg.preferredSize = [360, 72];
+        var stop = w.add('checkbox', undefined, 'Don\'t remind me again');
+        var row = w.add('group');
+        row.alignment = 'right';
+        row.add('button', undefined, 'Cancel', { name: 'cancel' });
+        row.add('button', undefined, 'Render', { name: 'ok' });
+        var render = w.show() === 1;
+        return { render: render, stopReminding: stop.value };
+    }
+
     return {
         info: wrap(info),
+        cacheReminder: wrap(cacheReminder),
         prepare: wrap(prepare),
         restore: wrap(restore),
         setZoom: wrap(setZoom),

@@ -38,6 +38,7 @@
     fullResolution: true,
     disableAutoSave: true,
     hideSafeZones: true,
+    cacheReminder: true,
     outDir: path.join(os.homedir(), 'Desktop', 'Wireframe'),
     saveNextToProject: true
   };

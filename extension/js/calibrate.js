@@ -83,7 +83,8 @@
   // opts: { helper, comp (from host info), settings, log, onState?, toggleSafeZones? }
   // onState(patch) records view changes a crash would leave behind ({ layerControlsToggled },
   // { safeZonesToggled }). toggleSafeZones() presses AE's Title/Action Safe shortcut.
-  // Returns { zoom, rect: [x, y, w, h] window-relative crop (comp + padding), compRect, viewer }. Leaves the viewer at that zoom.
+  // Returns { zoom, rect: [x, y, w, h] window-relative crop (comp + padding), compRect, viewer, controls }. Leaves the viewer at that zoom.
+  // controls: 'shown' / 'hidden' = the state of View > Show Layer Controls when it could be told, else 'unknown'.
   async function calibrate({ helper, comp, settings, log, onState, toggleSafeZones }) {
     const stableMs = Math.max(200, settings.stableMs);
     // Pasteboard kept around the comp in the crop: layer handles and bounding boxes on the comp
@@ -93,6 +94,7 @@
     const cal = await CEP.jsx('calibrationStart', comp.id);
     if (onState) onState({ layerControlsToggled: !!cal.controlsToggled });
     if (!cal.controlsToggled) log('Could not hide layer controls; deselected layers instead.');
+    let controls = 'unknown';
 
     const measureAt = async (label, zoom) => {
       const set = await CEP.jsx('setZoom', comp.id, zoom, true);
@@ -127,9 +129,11 @@
           cal.controlsToggled = false; // back to the user's own state; nothing to undo later
           if (onState) onState({ layerControlsToggled: false });
           log('Layer controls were already hidden; left them that way.');
+          controls = 'hidden';
           a = other;
         } else {
           await CEP.jsx('toggleLayerControls');
+          controls = 'shown';
           a = await measureAt('small', a.zoom);
         }
       }
@@ -204,7 +208,7 @@
         if (inside(crop, viewer, 0) && Math.abs(f.rect[2] - expectedW) <= 3) {
           log('Fit zoom ' + (f.zoom * 100).toFixed(2) + '% → comp ' + f.rect[2] + '×' + f.rect[3] + ' px' +
             (padding ? ', capture ' + crop[2] + '×' + crop[3] + ' with ' + padding + ' px padding' : ''));
-          return { zoom: f.zoom, rect: crop, compRect: f.rect, viewer };
+          return { zoom: f.zoom, rect: crop, compRect: f.rect, viewer, controls };
         }
         zoom *= 0.97;
       }

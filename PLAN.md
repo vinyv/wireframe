@@ -107,6 +107,29 @@ After Effects 2025/2026, Windows only.
   Settings). tools/package.ps1 now also signs a .zxp with ZXPSignCmd 4.1.3 and a self-signed certificate
   (timestamped via DigiCert). Signing material lives in %APPDATA%\Wireframe\signing, outside the project.
   Not yet tried: installing the .zxp with debug mode off.
+- 2026-10-26 (0.2.1): slow frames were saved half-drawn. AE draws layer controls for the new time at once
+  and the frame later, so the outlines moving counted as "the frame changed" and a render slower than
+  stableMs was caught as new outlines over the old picture. Render now hides layer controls while each
+  frame renders, shows them for the capture, and hides them again (grabStable's new untilHash returns as
+  soon as the clean frame is back). Only when calibration knows the controls were showing; otherwise the
+  old single wait.
+- 2026-10-26 (0.2.2): the per-frame toggle brought AE to the front every frame (Show Layer Controls via
+  app.executeCommand activates AE; confirmed by watching the foreground window). Now two passes, one
+  toggle each: pass 1 with controls hidden renders every frame and keeps 48 px tile hashes of it
+  (grabStable tilesSave); pass 2 with controls shown captures, waiting until no tile that differs between
+  this frame and the previous one still shows the previous one (tilesExpect/tilesStale). Frames whose
+  content doesn't change need no render wait in pass 2. untilHash is gone.
+- 2026-10-26 (0.2.3): back to the 0.2.1 per-frame toggle (single pass; AE comes to the front each frame).
+  Render first shows a reminder bar to RAM-preview the range so frames are cached and each step is quick;
+  Settings > "Remind me to cache the frames first" (cacheReminder) turns it off. Tile hashing removed.
+  AE 26.5 menu commands found: "Play Current Preview" (10314) and "Cache Frames When Idle" (10550); there
+  is no "Cache Work Area in Background" any more, and no way to read when caching has finished.
+- 2026-10-26: a reported ~5 s freeze on closing Settings was AE Auto-Save writing the 31 MB project to
+  Google Drive (2.6 s stall logged exactly when an auto-save file was written), not Wireframe.
+- 2026-10-26 (0.2.4): the progress box can be dragged (anywhere but Cancel: WM_NCHITTEST -> HTCAPTION, the
+  label passes hits through; no activation, so AE keeps focus) and stays where it's dropped while the
+  helper runs. The cache reminder is a modal ScriptUI dialog in AE (Render / Cancel / Don't remind me
+  again) instead of a bar in the panel; Settings refills itself on settingsChanged so its checkbox follows.
 
 ## Architecture
 - **CEP panel** (HTML/JS, Node enabled): UI, frame loop, file output, talks to the helper.

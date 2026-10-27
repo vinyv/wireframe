@@ -231,7 +231,7 @@ class Program
         {
             case "ping":
                 var r = Ok(null);
-                r["version"] = "0.2.0";
+                r["version"] = "0.2.4";
                 r["pid"] = Process.GetCurrentProcess().Id;
                 return r;
             case "find": return Find(req);
@@ -385,12 +385,14 @@ class Program
     // after changeTimeoutMs without a change the frame is assumed identical to the previous one.
     // "watch" ([x,y,w,h], optional) is the region hashed for change/stability; it defaults to rect. Watching
     // the viewer plus its footer catches a frame change instantly (the timecode changes) even when the
-    // picture doesn't. Stops early if the user cancels.
+    // picture doesn't. "untilHash" (optional) returns as soon as the image matches it, without waiting
+    // for stableMs: for going back to a picture already known to be finished. Stops early if the user cancels.
     // Fills hash, grabs, timedOut, sameAsPrev into the reply.
     static Bitmap WaitStable(IntPtr hwnd, int[] rect, Dictionary<string, object> req, Dictionary<string, object> reply)
     {
         int[] watch = IntArray(req, "watch");
         string prevHash = Str(req, "prevHash", null);
+        string untilHash = Str(req, "untilHash", null);
         int stableMs = Int(req, "stableMs", 300);
         int intervalMs = Int(req, "intervalMs", 30);
         int changeTimeoutMs = Int(req, "changeTimeoutMs", 1000);
@@ -423,6 +425,7 @@ class Program
                     candidate = surface.Copy(area); candHash = h; candSince = t0;
                 }
 
+                if (h == untilHash) break;
                 if (changed && now - candSince >= stableMs) break;
                 if (now >= timeoutMs) { timedOut = true; break; }
                 PollEscape();
